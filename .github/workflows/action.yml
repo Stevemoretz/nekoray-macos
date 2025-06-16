@@ -8,7 +8,7 @@ jobs:
   check_tag:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Check latest tag
         id: check_tag
         if: github.event_name != 'push'
@@ -21,25 +21,25 @@ jobs:
             echo "Latest tags match! Aborting workflow."
             exit 1
           fi
-          
+
   build:
     runs-on: macos-13
     needs: check_tag
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Build Nekoray
         run: |
           bash builder.sh
       - name: Upload Artifact for amd64
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: nekoray_amd64
           path: nekoray/build/nekoray_amd64.zip
 
       - name: Upload Artifact for arm64
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: nekoray_arm64
           path: nekoray/build/nekoray_arm64.zip
@@ -55,7 +55,7 @@ jobs:
 
     steps:
       - name: Download Artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: nekoray_${{ matrix.arch }}
           path: ./
@@ -88,13 +88,13 @@ jobs:
 
     steps:
       - name: Download Artifact for amd64
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: nekoray_amd64
           path: ./
 
       - name: Download Artifact for arm64
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: nekoray_arm64
           path: ./
@@ -130,9 +130,8 @@ jobs:
           release_name: ${{ env.latest_tag }} macOS (Intel + Apple)
           body: Built on the original repository. ${{ env.latest_tag }}
           draft: false
-          published: true
           prerelease: ${{ contains(env.latest_tag, 'pre') }}
-          
+
       - name: Upload Release Asset for amd64
         id: upload_release_asset_amd64
         uses: actions/upload-release-asset@v1
