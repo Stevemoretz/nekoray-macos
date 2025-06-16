@@ -25,46 +25,43 @@ jobs:
   build:
     runs-on: macos-15
     needs: check_tag
-
     steps:
       - uses: actions/checkout@v4
-
       - name: Install Dependencies
         run: |
           brew install qt@5 cmake ninja protobuf
           brew link qt@5 --force
-
       - name: Build Nekoray
         run: |
-          mkdir -p nekoray/build
-          cd nekoray/build
+          mkdir -p build
+          cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DNKR_PACKAGE_MACOS=ON ..
           ninja
+          if [ ! -d "nekobox.app" ]; then
+            echo "Error: App bundle 'nekobox.app' not found!"
+            exit 1
+          fi
           macdeployqt nekobox.app
           zip -r nekoray.zip nekobox.app
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: nekoray
-          path: nekoray/build/nekoray.zip
+          path: build/nekoray.zip
 
   test:
     runs-on: macos-15
     needs: build
-
     steps:
       - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
           name: nekoray
           path: ./
-
       - name: Unzip Artifact
         run: |
           unzip -q nekoray.zip
           mv nekobox.app nekoray.app
-
       - name: Run Nekoray
         run: |
           ./nekoray.app/Contents/MacOS/nekobox > nekoray.log 2>&1 &
@@ -85,21 +82,18 @@ jobs:
       actions: read
       pull-requests: write
       issues: write
-
     steps:
       - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
           name: nekoray
           path: ./
-
       - name: Check latest tag
         id: check_tag
         run: |
           latest_tag=$(git ls-remote --tags --sort=-v:refname https://github.com/MatsuriDayo/nekoray.git | head -n1 | awk '{print $2}' | sed 's/refs\/tags\///')
           echo "Latest tag is ${latest_tag}"
           echo "latest_tag=${latest_tag}" >> $GITHUB_ENV
-
       - name: Check if release already exists
         id: check_release
         env:
@@ -113,7 +107,6 @@ jobs:
             curl -X DELETE -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${{ github.repository }}/git/refs/tags/${{ env.latest_tag }}" || true
             sleep 10
           fi
-
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -125,7 +118,6 @@ jobs:
           body: Built on the original repository. ${{ env.latest_tag }}
           draft: false
           prerelease: ${{ contains(env.latest_tag, 'pre') }}
-
       - name: Upload Release Asset
         id: upload_release_asset
         uses: actions/upload-release-asset@v1
