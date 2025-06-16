@@ -23,51 +23,51 @@ jobs:
           fi
 
   build:
-    runs-on: macos-13
+    runs-on: macos-15
     needs: check_tag
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Dependencies
+        run: |
+          brew install qt@5 cmake ninja protobuf
+          brew link qt@5 --force
+
       - name: Build Nekoray
         run: |
-          bash builder.sh
-      - name: Upload Artifact for amd64
-        uses: actions/upload-artifact@v4
-        with:
-          name: nekoray_amd64
-          path: nekoray/build/nekoray_amd64.zip
+          mkdir -p nekoray/build
+          cd nekoray/build
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DNKR_PACKAGE_MACOS=ON ..
+          ninja
+          macdeployqt nekobox.app
+          zip -r nekoray.zip nekobox.app
 
-      - name: Upload Artifact for arm64
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nekoray_arm64
-          path: nekoray/build/nekoray_arm64.zip
+          name: nekoray
+          path: nekoray/build/nekoray.zip
 
   test:
-    strategy:
-      matrix:
-        os: [macos-11, macos-12, macos-13]
-        arch: [amd64, arm64]
-
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-15
     needs: build
 
     steps:
       - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
-          name: nekoray_${{ matrix.arch }}
+          name: nekoray
           path: ./
 
       - name: Unzip Artifact
         run: |
-          unzip -q nekoray_${{ matrix.arch }}.zip
-          mv nekoray_${{ matrix.arch }}.app nekoray.app
+          unzip -q nekoray.zip
+          mv nekobox.app nekoray.app
 
       - name: Run Nekoray
         run: |
-          ./nekoray.app/Contents/MacOS/nekoray > nekoray.log 2>&1 &
+          ./nekoray.app/Contents/MacOS/nekobox > nekoray.log 2>&1 &
           nekoray_pid=$!
           sleep 10
           if ! ps -p "$nekoray_pid" > /dev/null; then
@@ -87,16 +87,10 @@ jobs:
       issues: write
 
     steps:
-      - name: Download Artifact for amd64
+      - name: Download Artifact
         uses: actions/download-artifact@v4
         with:
-          name: nekoray_amd64
-          path: ./
-
-      - name: Download Artifact for arm64
-        uses: actions/download-artifact@v4
-        with:
-          name: nekoray_arm64
+          name: nekoray
           path: ./
 
       - name: Check latest tag
@@ -127,29 +121,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ env.latest_tag }}
-          release_name: ${{ env.latest_tag }} macOS (Intel + Apple)
+          release_name: ${{ env.latest_tag }} macOS
           body: Built on the original repository. ${{ env.latest_tag }}
           draft: false
           prerelease: ${{ contains(env.latest_tag, 'pre') }}
 
-      - name: Upload Release Asset for amd64
-        id: upload_release_asset_amd64
+      - name: Upload Release Asset
+        id: upload_release_asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: nekoray_amd64.zip
-          asset_name: nekoray_amd64.zip
-          asset_content_type: application/zip
-
-      - name: Upload Release Asset for arm64
-        id: upload_release_asset_arm64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: nekoray_arm64.zip
-          asset_name: nekoray_arm64.zip
+          asset_path: nekoray.zip
+          asset_name: nekoray.zip
           asset_content_type: application/zip
