@@ -33,6 +33,7 @@ jobs:
           brew link qt@5 --force
       - name: Build Nekoray
         run: |
+          cd nekoray
           mkdir -p build
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DNKR_PACKAGE_MACOS=ON ..
@@ -47,7 +48,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nekoray
-          path: build/nekoray.zip
+          path: nekoray/build/nekoray.zip
 
   test:
     runs-on: macos-15
@@ -61,10 +62,9 @@ jobs:
       - name: Unzip Artifact
         run: |
           unzip -q nekoray.zip
-          mv nekobox.app nekoray.app
       - name: Run Nekoray
         run: |
-          ./nekoray.app/Contents/MacOS/nekobox > nekoray.log 2>&1 &
+          ./nekobox.app/Contents/MacOS/nekobox > nekoray.log 2>&1 &
           nekoray_pid=$!
           sleep 10
           if ! ps -p "$nekoray_pid" > /dev/null; then
